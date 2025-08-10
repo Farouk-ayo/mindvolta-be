@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  password          String?
+  name              String?
+  avatar            String?
+  isEmailVerified   Boolean  @default(false)
+  isOnboardingComplete Boolean @default(false)
+  
+  // OAuth fields
+  googleId          String?  @unique
+  facebookId        String?  @unique
+  appleId           String?  @unique
+  
+  // Profile fields
+  dateOfBirth       DateTime?
+  gender            Gender?
+  occupation        String?
+  mentalHealthIssues String[] // Array of issues like ["anxiety", "depression"]
+  stressCauses      String[] // Array of stress causes
+  
+  // Preferences
+  notificationsEnabled Boolean @default(true)
+  musicPreference   String?
+  
+  // Relationships
+  moodEntries       MoodEntry[]
+  messages          Message[]
+  surveyResponses   SurveyResponse[]
+  communityPosts    CommunityPost[]
+  communityComments CommunityComment[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("users")
+}
+
+model MoodEntry {
+  id          String   @id @default(cuid())
+  userId      String
+  mood        MoodType
+  intensity   Int      // 1-10 scale
+  notes       String?
+  activities  String[] // What they were doing
+  triggers    String[] // What triggered this mood
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@map("mood_entries")
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  content     String
+  senderId    String
+  receiverId  String
+  isAI        Boolean  @default(false)
+  isRead      Boolean  @default(false)
+  messageType MessageType @default(TEXT)
+  metadata    Json?    // For storing additional data like AI confidence, etc.
+  
+  user        User?    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@map("messages")
+}
+
+model SurveyResponse {
+  id          String   @id @default(cuid())
+  userId      String
+  surveyType  SurveyType
+  responses   Json     // Store survey answers as JSON
+  score       Int?     // Calculated score (e.g., depression score)
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@map("survey_responses")
+}
+
+model CommunityPost {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  content     String
+  isAnonymous Boolean  @default(false)
+  tags        String[] // ["anxiety", "support", "victory"]
+  likesCount  Int      @default(0)
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments    CommunityComment[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("community_posts")
+}
+
+model CommunityComment {
+  id          String   @id @default(cuid())
+  postId      String
+  userId      String
+  content     String
+  isAnonymous Boolean  @default(false)
+  
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+
+  @@map("community_comments")
+}
+
+model MusicTrack {
+  id          String   @id @default(cuid())
+  title       String
+  artist      String
+  duration    Int      // in seconds
+  genre       String
+  moodTags    String[] // ["calm", "energetic", "sad"]
+  audioUrl    String
+  imageUrl    String?
+  
+  createdAt   DateTime @default(now())
+
+  @@map("music_tracks")
+}
+
+model ThoughtOfTheDay {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  author      String?
+  category    String   // "motivation", "mindfulness", etc.
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+
+  @@map("thoughts_of_the_day")
+}
+
+model Therapist {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  phone       String?
+  address     String?
+  specialties String[]
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+
+  @@map("therapists")
+}
+
+// Enums
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum MoodType {
+  HAPPY
+  SAD
+  ANGRY
+  ANXIOUS
+  CALM
+  EXCITED
+  DEPRESSED
+  STRESSED
+  CONTENT
+  OVERWHELMED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  SUGGESTION
+}
+
+enum SurveyType {
+  ONBOARDING
+  DEPRESSION_SCREENING
+  ANXIETY_ASSESSMENT
+  WEEKLY_CHECKIN
+  MOOD_TRACKER
+}
